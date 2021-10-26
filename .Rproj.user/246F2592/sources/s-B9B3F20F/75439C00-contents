@@ -1,0 +1,311 @@
+# ---------------------------------------------------------
+# This scripts is used to generate subpanels in Fig1D
+# Autor: R. Gonzalo Parra
+# April 15, 2020
+# ---------------------------------------------------------
+
+
+pseudobulk_CT_scoring<-function(pseudo_cell, window_length, min_cnv_changes, min_consec_cnvs, segment_chromosomes, segment_coords)
+{
+  
+  # pseudo_cell<-MatrixCells[1,]
+  
+  chromatriptic_cell<-FALSE
+  chromosomes<- unique(segment_chromosomes)
+  
+  chromatriptic_chromosomes<-c()
+  bins_windows<-rep(0, length(segment_coords))
+  chr_windows_n<-rep(0, length(chromosomes))
+  names(chr_windows_n)<-chromosomes
+  
+  for (chromosome_i in chromosomes)
+  {
+    # start debug
+    chromatriptic_chromosome <-0
+    chr_windows<-0
+    segments_in_chromosome_i=which(segment_chromosomes==chromosome_i)
+    
+    for (segment_i in segments_in_chromosome_i)
+    {
+      window_limit <- segments_in_chromosome_i[which(as.numeric(segment_coords[segments_in_chromosome_i,2]) - as.numeric(segment_coords[segment_i, 1]) > window_length)[1]]
+      
+      if(!is.na(window_limit)) # this check is for the case we reached the border condition
+      {
+        window_limit_length=as.numeric(segment_coords[window_limit,2]) - as.numeric(segment_coords[segment_i, 1])
+        # This is the segment where the changes need to be quantified.
+        if(segment_i>window_limit)
+        {
+          print(paste("shit ",segment_i, " ",window_limit))
+        }
+        CNV_changes <-pseudo_cell[segment_i:window_limit]
+        
+        # Take NAs out
+        CNV_changes<-CNV_changes[which(!is.na(CNV_changes))]
+        names(CNV_changes) <- NULL
+        
+        # We slide the window and count again until the end. 
+        compressed_cnv <- rle(CNV_changes)
+        window_changes<- length(compressed_cnv$values)
+        cnv_states<-unique(compressed_cnv$values)
+        
+        # adaptation
+        window_changes
+        
+        # min_cnv_changes<-1
+        # which(compressed_cnv$lengths<=min_cnv_changes)
+        windows_to_delete<-which(compressed_cnv$lengths>=min_consec_cnvs)
+        compressed_cnv$values<-compressed_cnv$values[windows_to_delete]
+        compressed_cnv$lengths<-compressed_cnv$lengths[windows_to_delete]
+        
+        compressed_cnv<-inverse.rle(compressed_cnv)
+        compressed_cnv<-rle(compressed_cnv)
+        window_changes<- length(compressed_cnv$values)
+        cnv_states<-unique(compressed_cnv$values)
+        # length(compressed_cnv$values)
+        # end adaptation
+        
+        # Clean vector
+        # we ignore the windows that are too short
+        # shortwindows<-which(compressed_cnv$lengths<=min_consec_cnvs)
+        # if(length(shortwindows)>0)
+        # {
+        #   window_changes <- window_changes - length(shortwindows)
+        # }
+        #end clean vector
+        chr_windows <- chr_windows +1 
+        # if(window_changes>= (window_limit_length*min_cnv_changes)/window_length )
+        if(window_changes>= min_cnv_changes)
+        {
+          chromatriptic_cell=TRUE
+          chromatriptic_chromosome=chromatriptic_chromosome+1
+          bins_windows[segment_i:window_limit]<-bins_windows[segment_i:window_limit] +1
+        }
+      }
+    }
+    # End debug
+    if(chromatriptic_chromosome >0)
+    {
+      chromatriptic_chromosome <- chromatriptic_chromosome/chr_windows
+    }
+    chromatriptic_chromosomes=c(chromatriptic_chromosomes, chromatriptic_chromosome)
+    chr_windows_n[chromosome_i]<-chr_windows
+  }
+  
+  print(chromatriptic_chromosomes)
+  return(list(chromatriptic_chromosomes, bins_windows, chr_windows_n))
+}
+
+
+# ---------------------------------------
+# 
+# metacells_ct<-c()
+# windows_per_chromosomes<-c()
+# metacells_ct_bins<-c()
+
+CellsDataA<-list.files("/Users/parra/Desktop/StegleGroup/Datafor2015and2020chromothripsispapers/2020_Science/AllelicCov_BR_SI", pattern="alleleA.txt$", full.names=TRUE)
+CellsDataB<-list.files("/Users/parra/Desktop/StegleGroup/Datafor2015and2020chromothripsispapers/2020_Science/AllelicCov_BR_SI", pattern="alleleB.txt$", full.names=TRUE)
+
+length(CellsDataA)
+length(CellsDataB)
+
+MatrixCells<-c()
+CellNames<-c()
+
+for(i in 1:length(CellsDataA))
+{
+  DataCellA<-read.table(CellsDataA[i], header = T)
+  DataCellB<-read.table(CellsDataB[i], header = T)
+  
+  # print(dim(DataCell))
+  AllelleA<-DataCellA[,4]
+  AllelleB<-DataCellB[,4]
+  
+  # threshold_gain=1.4
+  # thresholds_loss=0.5
+  
+  sd_cell<-2.5
+  
+  threshold_gain=mean(AllelleA[which(!is.na(AllelleA))])+ sd_cell*sd(AllelleA[which(!is.na(AllelleA))])
+  thresholds_loss=mean(AllelleA[which(!is.na(AllelleA))])- sd_cell*sd(AllelleA[which(!is.na(AllelleA))])
+  
+  AllelleA[which(AllelleA<=thresholds_loss)]=0
+  AllelleA[which(AllelleA>=threshold_gain)]=2
+  AllelleA[which(AllelleA>thresholds_loss & AllelleA<threshold_gain)]=1
+  
+  AllelleB[which(AllelleB<=thresholds_loss)]=0
+  AllelleB[which(AllelleB>=threshold_gain)]=2
+  AllelleB[which(AllelleB>thresholds_loss & AllelleB<threshold_gain)]=1
+  
+  DataCellCNV<-as.numeric((AllelleA)+AllelleB)
+  # print(range(DataCellCNV[which(!is.na(DataCellCNV))]))
+  MatrixCells<-rbind(MatrixCells, DataCellCNV)
+  
+  CellNames<-c(CellNames, unlist(strsplit(CellsDataA[i], "_", fixed=T))[8])
+}
+
+DataCell<-read.table(CellsDataA[1], header = T)
+segment_chromosomes<-gsub("hs", "", DataCell[,1])
+segment_coords<-cbind(DataCell[,2], DataCell[,2]+249999)
+
+colnames(MatrixCells)<-paste0(segment_chromosomes,":", segment_coords[,1], "-", segment_coords[,2])
+rownames(MatrixCells)<-1:nrow(MatrixCells)
+
+rownames(MatrixCells)<-CellNames
+MatrixCells<-MatrixCells[sort(CellNames),]
+
+library(reshape2)
+library(ggplot2)
+# library(ggrastr)
+#
+melted <-melt(as.matrix(MatrixCells), varnames=c('Cells', 'Chromosome'), as.is=T)
+head(melted)
+unique(melted$value)
+
+melted$chrXY <- unlist(lapply(strsplit(melted$Chromosome, ':'), '[[',1))
+
+auxmelted<-c()
+
+for(i in c(1:22,"X"))
+{
+  auxmelted<-rbind(auxmelted, melted[which(melted$chrXY==i),])
+}
+
+melted<-auxmelted
+auxmelted<-c()
+
+
+melted$start <-unlist(lapply((strsplit(unlist(lapply(strsplit(melted$Chromosome, '-'), '[[',1)), ':')), '[[',2))
+melted$end <- unlist(lapply(strsplit(melted$Chromosome, '-'), '[[',2))
+melted$order<-1:length(melted$Chromosome)
+
+unique(melted$value[which(!is.na(melted$value))])
+
+# melted$value[which(melted$value>=8)]=8
+
+midpoint=2
+plotmatrix<- ggplot(melted) + geom_tile(aes(x=reorder(Chromosome,order), y=reorder(Cells, order), fill=value)) +
+  scale_fill_gradient2(low="darkblue", high="darkred",  midpoint = midpoint, mid = "lightgrey") +
+  theme(axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.ticks.y = element_blank(),  
+        panel.spacing=unit(.0001, "lines"), panel.border = element_rect(color = "black", fill = NA, size = 0.8), 
+        strip.background=element_rect(colour="black"),  panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        axis.line = element_blank(), strip.text = element_text(size = 18)) +
+facet_grid(.~reorder(chrXY,order), switch = "y", scales="free", space="free") +  labs(x="", y="") 
+  
+plotmatrix
+
+# -------- Calculate CT
+
+window_length <-50000000
+min_cnv_changes <- 10
+min_consec_cnvs <- 2
+
+ct_matrix<-c()
+
+for(i in 1:nrow(MatrixCells))
+{
+  print(rownames(MatrixCells)[i])
+  chromatriptic_chromosomes<-pseudobulk_CT_scoring(MatrixCells[i,], window_length, min_cnv_changes, min_consec_cnvs, segment_chromosomes, segment_coords)
+  ct_matrix<-rbind(ct_matrix, chromatriptic_chromosomes[[1]])
+}
+
+rownames(ct_matrix)<-rownames(MatrixCells)
+melted_ct <-reshape2::melt(t(as.matrix(ct_matrix)), varnames=c('Chromosome', 'Cell'), as.is=T)
+melted_ct$value<-as.numeric(melted_ct$value)
+melted_ct$Chromosome<-as.character(melted_ct$Chromosome)
+melted_ct$Chromosome[which(melted_ct$Chromosome=="23")]="X"
+melted_ct$Chromosome[which(melted_ct$Chromosome=="24")]="Y"
+melted_ct$Clone<-as.character(melted_ct$Cell)
+melted_ct$value[melted_ct$value==0]<-NA
+
+clone_order<-rev(rownames(MatrixCells))
+melted_ct$Cell <-factor(melted_ct$Cell,levels = rev(clone_order))
+
+melted_ct$Chromosome <- factor(melted_ct$Chromosome, levels = c(1:22,"X","Y"))
+colnames(melted_ct)[3]<-"CT Fraction"
+
+my_cols <- c("yellow", "red", "darkred")
+
+# Visualization
+plot<-ggpubr::ggballoonplot(melted_ct, size = "CT Fraction", fill="CT Fraction", color = "black", x="Chromosome", y = "Cell")+
+  scale_fill_gradientn(colors = my_cols)+
+  guides(size = FALSE)+ theme(axis.title = element_text(size = 18, family="Arial"), axis.text = element_text(size = 18, family="Arial"),
+                              legend.title = element_text(size = 14, family="Arial"),  
+                              legend.text =element_text(size = 14, angle = 45, family="Arial"), legend.position = "top")
+
+plot
+
+# 
+# 
+# for(metacell_i in 1:6)
+# {
+#   print(paste0("Calculating CT scores for metacell ",  cluster_i, "..."))
+#   chromatriptic_chromosomes<-pseudobulk_CT_scoring(Metacells[metacell_i,], window_length, min_cnv_changes, min_consec_cnvs, segment_chromosomes, segment_coords)
+#   metacells_ct<-rbind(metacells_ct, chromatriptic_chromosomes[[1]])
+#   metacells_ct_bins<-rbind(metacells_ct_bins, chromatriptic_chromosomes[[2]])
+#   windows_per_chromosomes<-rbind(windows_per_chromosomes, chromatriptic_chromosomes[[3]])
+# }
+# 
+# # Matrix_chromatripsis_cells_metacells <- pseudobulk_CT_scoring(pseudo_cell, window_length=50000000, min_cnv_changes=10, min_consec_cnvs=1, segment_chromosomes)
+# # saveRDS(Matrix_chromatripsis_cells_metacells, "/home/r511a/projects/Gonzalo/Meduloblastoma/ScriptsPaper/MetaCellData/STP_Nuclei_Metacells_CT.RDS")
+# # Matrix_chromatripsis_cells_metacells<-readRDS("/home/r511a/projects/Gonzalo/Meduloblastoma/ScriptsPaper/MetaCellData/STP_Nuclei_Metacells_CT.RDS")
+# 
+# CT_Metacells_new<-metacells_ct_bins
+# # Matrix_chromatripsis_cells_metacells[[3]]
+# rownames(CT_Metacells_new)<-rownames(Metacells)
+# 
+# # plot(CT_Metacells_new["C6",  segment_chromosomes==5]/Matrix_chromatripsis_cells_metacells[[3]][5], pch=16, ylab="CNV", xlab="Genomic Coordinates", main="", col=col1)
+# 
+# # -------------------------------------
+# # -------Plot All Clones --------------
+# # -------------------------------------
+# MetaCell_All_df<-c()
+# 
+# plots<-list()
+# p_i=1
+# 
+# # We have to reorder the cluster order to follow the order from the clone lineage tree
+# ClusterAssignments<-read.table("/icgc/dkfzlsdf/analysis/B260/projects/chromothripsis_medulloblastoma/DNA_processed_data_cellranger-dna_v.1.1.0/sample_color_mapping.txt", header=F, stringsAsFactors = F, skip = 1, sep="\t", comment.char = "")
+# ClustersMapp<-ClusterAssignments[which(ClusterAssignments$V5==Sample), c(1,2)]
+# ClusterOrder<-ClustersMapp[,1]
+# 
+# library(ggplot2)
+# for(ClonePlot in paste0("C", ClusterOrder))
+# {
+#   MetaCell_df<-as.data.frame(cbind(rep(ClonePlot, length(segment_chromosomes)), colnames(Metacells)))
+#   colnames(MetaCell_df)<-c("Clone", "Chromosome")
+#   
+#   MetaCell_df$chrXY <- unlist(lapply(strsplit(MetaCell_df$Chromosome, ':'), '[[',1))
+#   MetaCell_df$start <-unlist(lapply((strsplit(unlist(lapply(strsplit(MetaCell_df$Chromosome, '-'), '[[',1)), ':')), '[[',2))
+#   MetaCell_df$end <- unlist(lapply(strsplit(MetaCell_df$Chromosome, '-'), '[[',2))
+#   MetaCell_df$CNV<-Metacells[ClonePlot,]
+#   MetaCell_df$CT_bin<-CT_Metacells_new[ClonePlot,]
+#   MetaCell_df$CT_bin_norm<-CT_Metacells_new[ClonePlot,]/windows_per_chromosomes[1,][MetaCell_df$chrXY]
+#   MetaCell_df$Coordinates<-1:length(MetaCell_df$CNV)
+#   
+#   MetaCell_df$CT_bin_norm[1] <-0
+#   MetaCell_df$CT_bin_norm[2]<-0.74
+#   
+#   MetaCell_df_filtered<-MetaCell_df
+#   # MetaCell_df_filtered<-MetaCell_df[MetaCell_df$chrXY %in% c(4,5,7,16,17,19,"X"),]
+#   MetaCell_df_filtered$CT_bin_norm[1] <-0
+#   MetaCell_df_filtered$CT_bin_norm[2]<-0.74
+#   MetaCell_df_filtered$CNV<-as.numeric(MetaCell_df_filtered$CNV)
+#   MetaCell_df_filtered$CNV[MetaCell_df_filtered$CNV>=10]<-10
+#   # MetaCell_df_filtered
+#   
+#   PlotClone<-ggplot(MetaCell_df_filtered, aes(Coordinates, CNV)) +
+#     ggrastr::rasterise(geom_point(aes(colour = (CT_bin_norm))), dpi=300)+
+#     scale_colour_gradient2(low = "yellow", high = "black", mid ="red", midpoint = (0.25))+  ylim(0, 10) + 
+#     theme_bw()+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks.x = element_blank(), axis.text.x = element_blank(), panel.spacing.x=unit(0, "lines"), panel.border = element_rect(linetype =3))+
+#     facet_grid(.~reorder(chrXY,Coordinates), scales="free", space="free") + ggExtra::removeGrid() +
+#     scale_x_continuous(expand = c(0.01, 0.01))
+#   
+#   plots[[p_i]]<-PlotClone
+#   p_i=p_i+1
+#   
+#   # MetaCell_All_df<-rbind(MetaCell_All_df, MetaCell_df)
+# }
+# 
+# AllClones<-gridExtra::grid.arrange(grobs = plots, nrow = 6)
+# plot(AllClones)
+

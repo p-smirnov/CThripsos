@@ -1,0 +1,8 @@
+invisible(lapply(c("usethis", "devtools"), library, character.only = TRUE))
+devtools::install_github("proteinphysiologylab/frustratometeR")
+
+library(frustratometeR)
+
+Pdb_conf <- calculate_frustration(PdbID = "1n0r",Chain = "A", ResultsDir = "/Home/Desktop/")
+
+view_frustration_pymol(Pdb_conf)
