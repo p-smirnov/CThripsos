@@ -97,7 +97,7 @@ Calculate_CT_Metacells<-function(CThripsosObject, window_length, min_cnv_changes
     CT_MetacellsBins<-rbind(CT_MetacellsBins, chromatriptic_chromosomes$bins_windows)
   }
 
-  print("finished calculating now storeing objects..")
+  print("finished calculating now storing objects..")
   rownames(CT_MetacellsChrs)<-rownames(CThripsosObject$Metacells$MetacellsMatrix)
   colnames(CT_MetacellsChrs)<-CThripsosObject$Annotations$chromosomes
 
@@ -217,7 +217,7 @@ CreateMetacells<-function(CThripsosObject, clusters)
 
   for(cluster_i in unique(clusters[,"cluster"]))
   {
-    print(paste0("creting metacell for cluster ",  cluster_i, "..."))
+    print(paste0("creating metacell for cluster ",  cluster_i, "..."))
     metacell<- apply(as.matrix(CThripsosObject$CNVMatrix[,which(clusters[,"cluster"]==cluster_i)]), 1, function(x) as.numeric(names(which.max(table(as.numeric(x))))))
     Metacells<-rbind(Metacells, metacell)
   }
