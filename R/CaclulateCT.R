@@ -237,46 +237,55 @@ CreateMetacells<-function(CThripsosObject, clusters)
   return(CThripsosObject)
 }
 
-plot_MetacellsCT<-function(CThripsosObject)
+plot_MetacellsCT<-function (CThripsosObject, score_binary=T)
 {
   library(ggplot2)
-  MetaCell_All_df<-c()
+  MetaCell_All_df <- c()
+  plots <- list()
+  p_i = 1
+  for (ClonePlot in unique(CThripsosObject$Metacells$MetacellsClusters[,
+                                                                       2])) {
+    MetaCell_df <- as.data.frame(cbind(rep(ClonePlot, length(CThripsosObject$Annotations$segment_chromosomes)),
+                                       colnames(CThripsosObject$Metacells$MetacellsMatrix)))
+    colnames(MetaCell_df) <- c("Clone", "Chromosome")
+    MetaCell_df$chrXY <- unlist(lapply(strsplit(MetaCell_df$Chromosome,
+                                                ":"), "[[", 1))
+    MetaCell_df$start <- unlist(lapply((strsplit(unlist(lapply(strsplit(MetaCell_df$Chromosome,
+                                                                        "-"), "[[", 1)), ":")), "[[", 2))
+    MetaCell_df$end <- unlist(lapply(strsplit(MetaCell_df$Chromosome,
+                                              "-"), "[[", 2))
+    MetaCell_df$CNV <- CThripsosObject$Metacells$MetacellsMatrix[ClonePlot,
+    ]
+    MetaCell_df$CT_bin <- CThripsosObject$Metacells$CT_MetacellsBins[ClonePlot,
+    ]
+    MetaCell_df$Coordinates <- 1:length(MetaCell_df$CNV)
+    MetaCell_df$CT_bin[1] <- 0
+    MetaCell_df$CT_bin[2] <- 0.1
+    MetaCell_df_filtered <- MetaCell_df
+    MetaCell_df_filtered$CT_bin[1] <- 0
+    MetaCell_df_filtered$CT_bin[2] <- 0.1
+    MetaCell_df_filtered$CNV <- as.numeric(MetaCell_df_filtered$CNV)
+    MetaCell_df_filtered$CNV[MetaCell_df_filtered$CNV >=
+                               10] <- 10
 
-  plots<-list()
-  p_i=1
+    if(score_binary==T)
+    {
+    MetaCell_df_filtered$CT_bin[MetaCell_df_filtered$CT_bin>0]<-1
+    }
 
-  for(ClonePlot in unique(CThripsosObject$Metacells$MetacellsClusters[,2]))
-  {
-    MetaCell_df<-as.data.frame(cbind(rep(ClonePlot, length(CThripsosObject$Annotations$segment_chromosomes)), colnames(CThripsosObject$Metacells$MetacellsMatrix)))
-    colnames(MetaCell_df)<-c("Clone", "Chromosome")
-
-    MetaCell_df$chrXY <- unlist(lapply(strsplit(MetaCell_df$Chromosome, ':'), '[[',1))
-    MetaCell_df$start <-unlist(lapply((strsplit(unlist(lapply(strsplit(MetaCell_df$Chromosome, '-'), '[[',1)), ':')), '[[',2))
-    MetaCell_df$end <- unlist(lapply(strsplit(MetaCell_df$Chromosome, '-'), '[[',2))
-    MetaCell_df$CNV<-CThripsosObject$Metacells$MetacellsMatrix[ClonePlot,]
-    MetaCell_df$CT_bin<-CThripsosObject$Metacells$CT_MetacellsBins[ClonePlot,]
-    MetaCell_df$Coordinates<-1:length(MetaCell_df$CNV)
-
-    MetaCell_df$CT_bin[1] <-0
-    MetaCell_df$CT_bin[2]<-0.74
-
-    MetaCell_df_filtered<-MetaCell_df
-    MetaCell_df_filtered$CT_bin[1] <-0
-    MetaCell_df_filtered$CT_bin[2]<-0.74
-    MetaCell_df_filtered$CNV<-as.numeric(MetaCell_df_filtered$CNV)
-    MetaCell_df_filtered$CNV[MetaCell_df_filtered$CNV>=10]<-10
-
-    PlotClone<-ggplot(MetaCell_df_filtered, aes(Coordinates, CNV)) +
-      geom_point(aes(colour = (CT_bin)))+
-      scale_colour_gradient2(low = "yellow", high = "black", mid ="red", midpoint = (0.25))+  ylim(0, 10) +
-      theme_bw()+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks.x = element_blank(), axis.text.x = element_blank(), panel.spacing.x=unit(0, "lines"), panel.border = element_rect(linetype =3))+
-      facet_grid(.~reorder(chrXY,Coordinates), scales="free", space="free") + ggExtra::removeGrid() +
-      scale_x_continuous(expand = c(0.01, 0.01))
-
-    plots[[p_i]]<-PlotClone
-    p_i=p_i+1
+    PlotClone <- ggplot(MetaCell_df_filtered, aes(Coordinates,
+                                                  CNV)) + geom_point(aes(colour = (CT_bin))) + scale_colour_gradient2(low = "yellow",
+                                                                                                                      high = "black", mid = "red", midpoint = (0.5)) +
+      ylim(0, 10) + theme_bw() + theme(panel.grid.major = element_blank(),
+                                       panel.grid.minor = element_blank(), axis.ticks.x = element_blank(),
+                                       axis.text.x = element_blank(), panel.spacing.x = unit(0,
+                                                                                             "lines"), panel.border = element_rect(linetype = 3)) +
+      facet_grid(. ~ reorder(chrXY, Coordinates), scales = "free",
+                 space = "free") + ggExtra::removeGrid() + scale_x_continuous(expand = c(0.01,
+                                                                                         0.01))
+    plots[[p_i]] <- PlotClone
+    p_i = p_i + 1
   }
-
-  AllClones<-gridExtra::grid.arrange(grobs = plots, nrow = 6)
+  AllClones <- gridExtra::grid.arrange(grobs = plots, nrow = 8)
   plot(AllClones)
 }
