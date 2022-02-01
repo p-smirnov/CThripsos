@@ -237,7 +237,7 @@ CreateMetacells<-function(CThripsosObject, clusters)
   return(CThripsosObject)
 }
 
-plot_MetacellsCT<-function (CThripsosObject, score_binary=T)
+plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows)
 {
   library(ggplot2)
   MetaCell_All_df <- c()
@@ -266,7 +266,7 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T)
     MetaCell_df_filtered$CT_bin[2] <- 0.1
     MetaCell_df_filtered$CNV <- as.numeric(MetaCell_df_filtered$CNV)
     MetaCell_df_filtered$CNV[MetaCell_df_filtered$CNV >=
-                               10] <- 10
+                               min_cnv_changes] <- min_cnv_changes
 
     if(score_binary==T)
     {
@@ -286,6 +286,6 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T)
     plots[[p_i]] <- PlotClone
     p_i = p_i + 1
   }
-  AllClones <- gridExtra::grid.arrange(grobs = plots, nrow = 8)
+  AllClones <- gridExtra::grid.arrange(grobs = plots, nrow = min_cnv_changes)
   plot(AllClones)
 }
