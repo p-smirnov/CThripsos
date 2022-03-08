@@ -237,9 +237,14 @@ CreateMetacells<-function(CThripsosObject, clusters)
   return(CThripsosObject)
 }
 
-plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows)
+plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows=NULL)
 {
   library(ggplot2)
+  
+  if(rows==NULL)
+   {
+    rows<-nrow(CThripsosObject$Metacells$MetacellsMatrix)
+   }
   MetaCell_All_df <- c()
   plots <- list()
   p_i = 1
@@ -290,13 +295,12 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows)
   plot(AllClones)
 }
 
-                     CT_Regions_Metacells<-function(CThripsosObject, Metacell)
+CT_Regions_Metacells<-function(CThripsosObject, Metacell)
 {
   #Metacell refers to the metacell index in the matrix e.g 1,2,3..,n
   normalised_ct<-c()
   clone_limits<-c()
-
-  CThripsosObject$Metacells$CT_MetacellsBins
+  regions<-c()
 
   for(chr_ct in unique(segment_chromosomes))
   {
@@ -305,7 +309,6 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows)
   }
 
   #we normalise the profile to 0,1
-  range(normalised_ct)
 
   # we set a threshold to consider CT+
   CT_thr<-0
@@ -328,8 +331,8 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows)
     segment_coords_ct_chr<-segment_coords_ct[segments_chr_ct,]
 
     compressed<-rle(normalised_ct_chr)
-    compressed$values
-    compressed$lengths
+    # compressed$values
+    # compressed$lengths
 
     segments_from<-1
     for(i in 1:length(compressed$values))
@@ -339,6 +342,7 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows)
         # print(i)
         segments_to<-segments_from+compressed$lengths[i]-1
         print(paste("chr", segment_chromosomes_ct_chr[segments_from], segment_coords_ct_chr[segments_from,1], segment_coords_ct_chr[segments_to,2], "segments: ", segments_from, segments_to))
+        regions<-rbind(regions, c(segment_chromosomes_ct_chr[segments_from], segment_coords_ct_chr[segments_from,1], segment_coords_ct_chr[segments_to,2]))
         clone_limits<-c(segment_coords_ct_chr[segments_from,1], segment_coords_ct_chr[segments_to,2])
       }
       segments_from<-segments_from+compressed$lengths[i]
@@ -348,5 +352,5 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows)
     # plot(normalised_ct_chr, col=as.numeric(segment_chromosomes_ct_chr))
 
   }
-  return(clone_limits)
+  return(regions)
 }
