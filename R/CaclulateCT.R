@@ -215,7 +215,7 @@ CreateMetacells<-function(CThripsosObject, clusters)
 {
   Metacells<-c()
 
-  for(cluster_i in unique(clusters[,"cluster"]))
+  for(cluster_i in sort(unique(clusters[,"cluster"])))
   {
     print(paste0("creating metacell for cluster ",  cluster_i, "..."))
     metacell<- apply(as.matrix(CThripsosObject$CNVMatrix[,which(clusters[,"cluster"]==cluster_i)]), 1, function(x) as.numeric(names(which.max(table(as.numeric(x))))))
