@@ -296,62 +296,49 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows=NULL)
 }
 
 
-CT_Regions_Metacells<-function(CThripsosObject, Metacell)
+CT_Regions_Metacells<-function (CThripsosObject, Metacell) 
 {
-  #Metacell refers to the metacell index in the matrix e.g 1,2,3..,n
-  normalised_ct<-c()
-  clone_limits<-c()
-  regions<-c()
-  
-  for(chr_ct in unique(CThripsosObject$Annotations$segment_chromosomes))
-  {
-    CT_chr<-CThripsosObject$Metacells$CT_MetacellsBins[Metacell,which(CThripsosObject$Annotations$segment_chromosomes==chr_ct)]
-    normalised_ct<-c(normalised_ct, CT_chr)
+  normalised_ct <- c()
+  clone_limits <- c()
+  regions <- c()
+  for (chr_ct in unique(CThripsosObject$Annotations$segment_chromosomes)) {
+    CT_chr <- CThripsosObject$Metacells$CT_MetacellsBins[Metacell, 
+                                                         which(CThripsosObject$Annotations$segment_chromosomes == 
+                                                                 chr_ct)]
+    normalised_ct <- c(normalised_ct, CT_chr)
   }
-  
-  #we normalise the profile to 0,1
-  
-  # we set a threshold to consider CT+
-  CT_thr<-0
-  normalised_ct[normalised_ct>CT_thr]<-1
-  
-  # we take Nans out
-  Nans<-which(!is.na(normalised_ct))
-  normalised_ct<-normalised_ct[Nans]
-  segment_chromosomes_ct<-CThripsosObject$Annotations$segment_chromosomes[Nans]
-  segment_coords_ct<-CThripsosObject$Annotations$segment_coords[Nans,]
-  
-  # we check the profile per chr
-  segments_chr_passed<-0
-  for(chr_ct in unique(segment_chromosomes_ct))
-  {
-    # print(paste("chr", chr_ct))
-    segments_chr_ct<-which(segment_chromosomes_ct==chr_ct)
-    normalised_ct_chr<-normalised_ct[segments_chr_ct]
-    segment_chromosomes_ct_chr<-segment_chromosomes_ct[segments_chr_ct]
-    segment_coords_ct_chr<-segment_coords_ct[segments_chr_ct,]
-    
-    compressed<-rle(normalised_ct_chr)
-    # compressed$values
-    # compressed$lengths
-    
-    segments_from<-1
-    for(i in 1:length(compressed$values))
-    {
-      if(compressed$values[i]==1)
-      {
-        # print(i)
-        segments_to<-segments_from+compressed$lengths[i]-1
-        print(paste("chr", segment_chromosomes_ct_chr[segments_from], segment_coords_ct_chr[segments_from,1], segment_coords_ct_chr[segments_to,2], "segments: ", segments_from, segments_to))
-        regions<-rbind(regions, c(segment_chromosomes_ct_chr[segments_from], segment_coords_ct_chr[segments_from,1], segment_coords_ct_chr[segments_to,2]))
-        clone_limits<-c(segment_coords_ct_chr[segments_from,1], segment_coords_ct_chr[segments_to,2])
+  CT_thr <- 0
+  normalised_ct[normalised_ct > CT_thr] <- 1
+  Nans <- which(!is.na(normalised_ct))
+  normalised_ct <- normalised_ct[Nans]
+  segment_chromosomes_ct <- CThripsosObject$Annotations$segment_chromosomes[Nans]
+  segment_coords_ct <- CThripsosObject$Annotations$segment_coords[Nans, 
+  ]
+  segments_chr_passed <- 0
+  for (chr_ct in unique(segment_chromosomes_ct)) {
+    segments_chr_ct <- which(segment_chromosomes_ct == chr_ct)
+    normalised_ct_chr <- normalised_ct[segments_chr_ct]
+    segment_chromosomes_ct_chr <- segment_chromosomes_ct[segments_chr_ct]
+    segment_coords_ct_chr <- segment_coords_ct[segments_chr_ct, 
+    ]
+    compressed <- rle(normalised_ct_chr)
+    segments_from <- 1
+    for (i in 1:length(compressed$values)) {
+      if (compressed$values[i] == 1) {
+        segments_to <- segments_from + compressed$lengths[i] - 
+          1
+        print(paste("chr", segment_chromosomes_ct_chr[segments_from], 
+                    segment_coords_ct_chr[segments_from, 1], segment_coords_ct_chr[segments_to, 
+                                                                                   2], "segments: ", segments_from, segments_to))
+        regions <- rbind(regions, c(Metacell, segment_chromosomes_ct_chr[segments_from], 
+                                    segment_coords_ct_chr[segments_from, 1], segment_coords_ct_chr[segments_to, 
+                                                                                                   2]))
+        clone_limits <- c(segment_coords_ct_chr[segments_from, 
+                                                1], segment_coords_ct_chr[segments_to, 2])
       }
-      segments_from<-segments_from+compressed$lengths[i]
+      segments_from <- segments_from + compressed$lengths[i]
     }
-    
-    segments_chr_passed<-segments_chr_passed + length(segments_chr_ct)
-    # plot(normalised_ct_chr, col=as.numeric(segment_chromosomes_ct_chr))
-    
+    segments_chr_passed <- segments_chr_passed + length(segments_chr_ct)
   }
   return(regions)
 }
