@@ -340,5 +340,8 @@ CT_Regions_Metacells<-function (CThripsosObject, Metacell)
     }
     segments_chr_passed <- segments_chr_passed + length(segments_chr_ct)
   }
+  
+  colnames(regions)<-c("clone", "chr", "start", "end")
+  
   return(regions)
 }
