@@ -241,7 +241,7 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows=NULL)
 {
   library(ggplot2)
   
-  if(rows==NULL)
+  if(is.null(rows))
    {
     rows<-nrow(CThripsosObject$Metacells$MetacellsMatrix)
    }
