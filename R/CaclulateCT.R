@@ -291,7 +291,7 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows=NULL)
     plots[[p_i]] <- PlotClone
     p_i = p_i + 1
   }
-  AllClones <- gridExtra::grid.arrange(grobs = plots, nrow = min_cnv_changes)
+  AllClones <- gridExtra::grid.arrange(grobs = plots, nrow = rows)
   plot(AllClones)
 }
 
