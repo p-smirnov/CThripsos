@@ -15,6 +15,7 @@ CT_scoring_single<-function(cell, window_length, min_cnv_changes, min_consec_cnv
 
   chromatriptic_chromosomes<-c()
   bins_windows<-rep(0, nrow(CThripsosObject$CNVMatrix))
+  bins_cnv_changes<-rep(0, nrow(CThripsosObject$CNVMatrix))
 
   for (chromosome_i in chromosomes)
   {
@@ -68,6 +69,9 @@ CT_scoring_single<-function(cell, window_length, min_cnv_changes, min_consec_cnv
           chromatriptic_chromosome=chromatriptic_chromosome+1
           bins_windows[segment_i:window_limit]<-bins_windows[segment_i:window_limit] +1
         }
+        bins_windows[3:10][1:3]
+
+        bins_cnv_changes[segment_i:window_limit][which(bins_cnv_changes[segment_i:window_limit]<window_changes)]<-window_changes
       }
     }
     if(chromatriptic_chromosome >0)
@@ -79,7 +83,7 @@ CT_scoring_single<-function(cell, window_length, min_cnv_changes, min_consec_cnv
   }
 
   print(chromatriptic_chromosomes)
-  return(list(chromatriptic_chromosomes=chromatriptic_chromosomes, bins_windows=bins_windows))
+  return(list(chromatriptic_chromosomes=chromatriptic_chromosomes, bins_windows=bins_windows, bins_cnv_changes=bins_cnv_changes))
 }
 
 
@@ -87,14 +91,16 @@ Calculate_CT_Metacells<-function(CThripsosObject, window_length, min_cnv_changes
 {
   CT_MetacellsChrs<-c()
   CT_MetacellsBins<-c()
+  CT_MetacellsBinsMaxCN<-c()
 
   for(i in 1:nrow(CThripsosObject$Metacells$MetacellsMatrix))
   {
-    print(paste("index", i, "..."))
+    print(paste("processing metacell", i, "..."))
     cell<-CThripsosObject$Metacells$MetacellsMatrix[i,]
     chromatriptic_chromosomes<-CT_scoring_single(cell, window_length, min_cnv_changes, min_consec_cnvs, CThripsosObject)
     CT_MetacellsChrs<-rbind(CT_MetacellsChrs, chromatriptic_chromosomes$chromatriptic_chromosomes)
     CT_MetacellsBins<-rbind(CT_MetacellsBins, chromatriptic_chromosomes$bins_windows)
+    CT_MetacellsBinsMaxCN<-rbind(CT_MetacellsBinsMaxCN, chromatriptic_chromosomes$bins_cnv_changes)
   }
 
   print("finished calculating now storing objects..")
@@ -104,11 +110,17 @@ Calculate_CT_Metacells<-function(CThripsosObject, window_length, min_cnv_changes
   rownames(CT_MetacellsBins)<-rownames(CThripsosObject$Metacells$MetacellsMatrix)
   colnames(CT_MetacellsBins)<-colnames(CThripsosObject$Metacells$MetacellsMatrix)
 
+  rownames(CT_MetacellsBinsMaxCN)<-rownames(CThripsosObject$Metacells$MetacellsMatrix)
+  colnames(CT_MetacellsBinsMaxCN)<-colnames(CThripsosObject$Metacells$MetacellsMatrix)
+
   CThripsosObject$Metacells=c(CThripsosObject$Metacells, CT_MetacellsChrs=1)
   CThripsosObject$Metacells$CT_MetacellsChrs<-CT_MetacellsChrs
 
   CThripsosObject$Metacells=c(CThripsosObject$Metacells, CT_MetacellsBins=1)
   CThripsosObject$Metacells$CT_MetacellsBins<-CT_MetacellsBins
+
+  CThripsosObject$Metacells=c(CThripsosObject$Metacells, CT_MetacellsBinsMaxCN=1)
+  CThripsosObject$Metacells$CT_MetacellsBinsMaxCN<-CT_MetacellsBinsMaxCN
 
   CThripsosObject$Metacells=c(CThripsosObject$Metacells, window_length=1)
   CThripsosObject$Metacells$window_length<-window_length
@@ -237,32 +249,33 @@ CreateMetacells<-function(CThripsosObject, clusters)
   return(CThripsosObject)
 }
 
-plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows=NULL)
+plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows=NULL, plotvar="CT", max_cnv=CThripsosObject$Metacells$min_cnv_changes)
 {
   library(ggplot2)
-  
+
   if(is.null(rows))
-   {
+  {
     rows<-nrow(CThripsosObject$Metacells$MetacellsMatrix)
-   }
+  }
+
   MetaCell_All_df <- c()
   plots <- list()
   p_i = 1
-  for (ClonePlot in unique(CThripsosObject$Metacells$MetacellsClusters[,
-                                                                       2])) {
+  for (ClonePlot in unique(CThripsosObject$Metacells$MetacellsClusters[,2]))
+  {
     MetaCell_df <- as.data.frame(cbind(rep(ClonePlot, length(CThripsosObject$Annotations$segment_chromosomes)),
                                        colnames(CThripsosObject$Metacells$MetacellsMatrix)))
+
     colnames(MetaCell_df) <- c("Clone", "Chromosome")
     MetaCell_df$chrXY <- unlist(lapply(strsplit(MetaCell_df$Chromosome,
                                                 ":"), "[[", 1))
-    MetaCell_df$start <- unlist(lapply((strsplit(unlist(lapply(strsplit(MetaCell_df$Chromosome,
-                                                                        "-"), "[[", 1)), ":")), "[[", 2))
-    MetaCell_df$end <- unlist(lapply(strsplit(MetaCell_df$Chromosome,
-                                              "-"), "[[", 2))
-    MetaCell_df$CNV <- CThripsosObject$Metacells$MetacellsMatrix[ClonePlot,
-    ]
-    MetaCell_df$CT_bin <- CThripsosObject$Metacells$CT_MetacellsBins[ClonePlot,
-    ]
+    MetaCell_df$start <- unlist(lapply((strsplit(unlist(lapply(strsplit(MetaCell_df$Chromosome, "-"), "[[", 1)), ":")), "[[", 2))
+    MetaCell_df$end <- unlist(lapply(strsplit(MetaCell_df$Chromosome, "-"), "[[", 2))
+    MetaCell_df$CNV <- CThripsosObject$Metacells$MetacellsMatrix[ClonePlot, ]
+    MetaCell_df$CT_bin <- CThripsosObject$Metacells$CT_MetacellsBins[ClonePlot,]
+    MetaCell_df$CT_bin_cnvmax <- CThripsosObject$Metacells$CT_MetacellsBinsMaxCN[ClonePlot,]
+    MetaCell_df$CT_bin_cnvmax[which(MetaCell_df$CT_bin_cnvmax >  max_cnv)] <- max_cnv
+
     MetaCell_df$Coordinates <- 1:length(MetaCell_df$CNV)
     MetaCell_df$CT_bin[1] <- 0
     MetaCell_df$CT_bin[2] <- 0.1
@@ -270,24 +283,30 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows=NULL)
     MetaCell_df_filtered$CT_bin[1] <- 0
     MetaCell_df_filtered$CT_bin[2] <- 0.1
     MetaCell_df_filtered$CNV <- as.numeric(MetaCell_df_filtered$CNV)
-    MetaCell_df_filtered$CNV[MetaCell_df_filtered$CNV >=
-                               min_cnv_changes] <- min_cnv_changes
+    MetaCell_df_filtered$CNV[MetaCell_df_filtered$CNV >= min_cnv_changes] <- min_cnv_changes
 
     if(score_binary==T)
     {
     MetaCell_df_filtered$CT_bin[MetaCell_df_filtered$CT_bin>0]<-1
     }
 
-    PlotClone <- ggplot(MetaCell_df_filtered, aes(Coordinates,
-                                                  CNV)) + geom_point(aes(colour = (CT_bin))) + scale_colour_gradient2(low = "yellow",
-                                                                                                                      high = "black", mid = "red", midpoint = (0.5)) +
-      ylim(0, 10) + theme_bw() + theme(panel.grid.major = element_blank(),
-                                       panel.grid.minor = element_blank(), axis.ticks.x = element_blank(),
-                                       axis.text.x = element_blank(), panel.spacing.x = unit(0,
-                                                                                             "lines"), panel.border = element_rect(linetype = 3)) +
-      facet_grid(. ~ reorder(chrXY, Coordinates), scales = "free",
-                 space = "free") + ggExtra::removeGrid() + scale_x_continuous(expand = c(0.01,
-                                                                                         0.01))
+    if(plotvar=="CT")
+    {
+      PlotClone <- ggplot(MetaCell_df_filtered, aes(Coordinates, CNV)) + geom_point(aes(colour = (CT_bin))) +
+        scale_colour_gradient2(low = "yellow", high = "black", mid = "red", midpoint = (0.5)) +
+        ylim(0, 10) + theme_bw() +
+        theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+              axis.ticks.x = element_blank(), axis.text.x = element_blank(), panel.spacing.x = unit(0, "lines"), panel.border = element_rect(linetype = 3)) +
+        facet_grid(. ~ reorder(chrXY, Coordinates), scales = "free", space = "free") + ggExtra::removeGrid() + scale_x_continuous(expand = c(0.01, 0.01))
+    }else if(plotvar=="MaxCNV"){
+      PlotClone <- ggplot(MetaCell_df_filtered, aes(Coordinates, CNV)) + geom_point(aes(colour = (CT_bin_cnvmax))) +
+        scale_colour_gradient2(low = "yellow", high = "black", mid = "red", midpoint = (5)) +
+        ylim(0, 10) + theme_bw() +
+        theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+              axis.ticks.x = element_blank(), axis.text.x = element_blank(), panel.spacing.x = unit(0, "lines"), panel.border = element_rect(linetype = 3)) +
+        facet_grid(. ~ reorder(chrXY, Coordinates), scales = "free", space = "free") + ggExtra::removeGrid() + scale_x_continuous(expand = c(0.01, 0.01))
+    }
+
     plots[[p_i]] <- PlotClone
     p_i = p_i + 1
   }
@@ -296,14 +315,14 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows=NULL)
 }
 
 
-CT_Regions_Metacells<-function (CThripsosObject, Metacell) 
+CT_Regions_Metacells<-function (CThripsosObject, Metacell)
 {
   normalised_ct <- c()
   clone_limits <- c()
   regions <- c()
   for (chr_ct in unique(CThripsosObject$Annotations$segment_chromosomes)) {
-    CT_chr <- CThripsosObject$Metacells$CT_MetacellsBins[Metacell, 
-                                                         which(CThripsosObject$Annotations$segment_chromosomes == 
+    CT_chr <- CThripsosObject$Metacells$CT_MetacellsBins[Metacell,
+                                                         which(CThripsosObject$Annotations$segment_chromosomes ==
                                                                  chr_ct)]
     normalised_ct <- c(normalised_ct, CT_chr)
   }
@@ -312,36 +331,36 @@ CT_Regions_Metacells<-function (CThripsosObject, Metacell)
   Nans <- which(!is.na(normalised_ct))
   normalised_ct <- normalised_ct[Nans]
   segment_chromosomes_ct <- CThripsosObject$Annotations$segment_chromosomes[Nans]
-  segment_coords_ct <- CThripsosObject$Annotations$segment_coords[Nans, 
+  segment_coords_ct <- CThripsosObject$Annotations$segment_coords[Nans,
   ]
   segments_chr_passed <- 0
   for (chr_ct in unique(segment_chromosomes_ct)) {
     segments_chr_ct <- which(segment_chromosomes_ct == chr_ct)
     normalised_ct_chr <- normalised_ct[segments_chr_ct]
     segment_chromosomes_ct_chr <- segment_chromosomes_ct[segments_chr_ct]
-    segment_coords_ct_chr <- segment_coords_ct[segments_chr_ct, 
+    segment_coords_ct_chr <- segment_coords_ct[segments_chr_ct,
     ]
     compressed <- rle(normalised_ct_chr)
     segments_from <- 1
     for (i in 1:length(compressed$values)) {
       if (compressed$values[i] == 1) {
-        segments_to <- segments_from + compressed$lengths[i] - 
+        segments_to <- segments_from + compressed$lengths[i] -
           1
-        print(paste("chr", segment_chromosomes_ct_chr[segments_from], 
-                    segment_coords_ct_chr[segments_from, 1], segment_coords_ct_chr[segments_to, 
+        print(paste("chr", segment_chromosomes_ct_chr[segments_from],
+                    segment_coords_ct_chr[segments_from, 1], segment_coords_ct_chr[segments_to,
                                                                                    2], "segments: ", segments_from, segments_to))
-        regions <- rbind(regions, c(Metacell, segment_chromosomes_ct_chr[segments_from], 
-                                    segment_coords_ct_chr[segments_from, 1], segment_coords_ct_chr[segments_to, 
+        regions <- rbind(regions, c(Metacell, segment_chromosomes_ct_chr[segments_from],
+                                    segment_coords_ct_chr[segments_from, 1], segment_coords_ct_chr[segments_to,
                                                                                                    2]))
-        clone_limits <- c(segment_coords_ct_chr[segments_from, 
+        clone_limits <- c(segment_coords_ct_chr[segments_from,
                                                 1], segment_coords_ct_chr[segments_to, 2])
       }
       segments_from <- segments_from + compressed$lengths[i]
     }
     segments_chr_passed <- segments_chr_passed + length(segments_chr_ct)
   }
-  
+
   colnames(regions)<-c("clone", "chr", "start", "end")
-  
+
   return(regions)
 }
