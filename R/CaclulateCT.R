@@ -251,6 +251,7 @@ CreateMetacells<-function(CThripsosObject, clusters)
 
 plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows=NULL, plotvar="CT", max_cnv=CThripsosObject$Metacells$min_cnv_changes)
 {
+  # max_cnv is the upper limit to the color scale
   library(ggplot2)
 
   if(is.null(rows))
@@ -275,6 +276,8 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows=NULL, plotvar=
     MetaCell_df$CT_bin <- CThripsosObject$Metacells$CT_MetacellsBins[ClonePlot,]
     MetaCell_df$CT_bin_cnvmax <- CThripsosObject$Metacells$CT_MetacellsBinsMaxCN[ClonePlot,]
     MetaCell_df$CT_bin_cnvmax[which(MetaCell_df$CT_bin_cnvmax >  max_cnv)] <- max_cnv
+    MetaCell_df$CT_bin_cnvmax[1] <- 0
+    MetaCell_df$CT_bin_cnvmax[2] <- min_cnv_changes
 
     MetaCell_df$Coordinates <- 1:length(MetaCell_df$CNV)
     MetaCell_df$CT_bin[1] <- 0
