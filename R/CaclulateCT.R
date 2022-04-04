@@ -295,15 +295,15 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows=NULL, plotvar=
 
     if(plotvar=="CT")
     {
-      PlotClone <- ggplot(MetaCell_df_filtered, aes(Coordinates, CNV)) + geom_point(aes(colour = (CT_bin))) +
-        scale_colour_gradient2(low = "yellow", high = "black", mid = "red", midpoint = (0.5)) +
+      PlotClone <- ggplot(MetaCell_df_filtered, aes(Coordinates, CNV)) + ggrastr::rasterise(geom_point(aes(colour = (CT_bin))), dpi=300) +
+        scale_colour_gradient2(low = "orange", high = "black", mid = "red", midpoint = (0.5)) +
         ylim(0, 10) + theme_bw() +
         theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
               axis.ticks.x = element_blank(), axis.text.x = element_blank(), panel.spacing.x = unit(0, "lines"), panel.border = element_rect(linetype = 3)) +
         facet_grid(. ~ reorder(chrXY, Coordinates), scales = "free", space = "free") + ggExtra::removeGrid() + scale_x_continuous(expand = c(0.01, 0.01))
     }else if(plotvar=="MaxCNV"){
-      PlotClone <- ggplot(MetaCell_df_filtered, aes(Coordinates, CNV)) + geom_point(aes(colour = (CT_bin_cnvmax))) +
-        scale_colour_gradient2(low = "yellow", high = "black", mid = "red", midpoint = (5)) +
+      PlotClone <- ggplot(MetaCell_df_filtered, aes(Coordinates, CNV)) + ggrastr::rasterise(geom_point(aes(colour = (CT_bin_cnvmax))), dpi=300) +
+        scale_colour_gradient2(low = "orange", high = "black", mid = "red", midpoint = (5)) +
         ylim(0, 10) + theme_bw() +
         theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
               axis.ticks.x = element_blank(), axis.text.x = element_blank(), panel.spacing.x = unit(0, "lines"), panel.border = element_rect(linetype = 3)) +
@@ -314,7 +314,8 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows=NULL, plotvar=
     p_i = p_i + 1
   }
   AllClones <- gridExtra::grid.arrange(grobs = plots, nrow = rows)
-  plot(AllClones)
+  # plot(AllClones)
+  return(AllClones)
 }
 
 
