@@ -139,6 +139,7 @@ Calculate_CT_Cells<-function(CThripsosObject, window_length, min_cnv_changes, mi
 {
   CT_CellsChrs<-c()
   CT_CellsBins<-c()
+  CT_CellsBinsMaxCN<-c()
 
   for(i in 1:ncol(CThripsosObject$CNVMatrix))
   {
@@ -147,10 +148,15 @@ Calculate_CT_Cells<-function(CThripsosObject, window_length, min_cnv_changes, mi
     chromatriptic_chromosomes<-CT_scoring_single(cell, window_length, min_cnv_changes, min_consec_cnvs, CThripsosObject)
     CT_CellsChrs<-rbind(CT_CellsChrs, chromatriptic_chromosomes$chromatriptic_chromosomes)
     CT_CellsBins<-rbind(CT_CellsBins, chromatriptic_chromosomes$bins_windows)
+    CT_CellsBinsMaxCN<-rbind(CT_CellsBinsMaxCN, chromatriptic_chromosomes$bins_cnv_changes)
+
   }
 
   rownames(CT_CellsChrs)<-colnames(CThripsosObject$CNVMatrix)
   colnames(CT_CellsChrs)<-CThripsosObject$Annotations$chromosomes
+
+  rownames(CT_CellsBinsMaxCN)<-rownames(CThripsosObject$CNVMatrix)
+  colnames(CT_CellsBinsMaxCN)<-colnames(ThripsosObject$CNVMatrix)
 
   rownames(CT_CellsBins)<-colnames(CThripsosObject$CNVMatrix)
   colnames(CT_CellsBins)<-rownames(CThripsosObject$CNVMatrix)
@@ -160,6 +166,9 @@ Calculate_CT_Cells<-function(CThripsosObject, window_length, min_cnv_changes, mi
 
   CThripsosObject$CTData=c(CThripsosObject$CTData, window_length=1)
   CThripsosObject$CTData$window_length<-window_length
+
+  CThripsosObject$CTData=c(CThripsosObject$CTData, CT_CellsBinsMaxCN=1)
+  CThripsosObject$CTData$CT_CellsBinsMaxCN<-CT_CellsBinsMaxCN
 
   CThripsosObject$CTData=c(CThripsosObject$CTData, min_cnv_changes=1)
   CThripsosObject$CTData$min_cnv_changes<-min_cnv_changes
