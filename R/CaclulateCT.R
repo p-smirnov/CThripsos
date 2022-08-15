@@ -387,14 +387,14 @@ SortMatrixChrsNumerically<-function(Matrix)
   splitted_ids <- matrix(unlist(splitted_ids), ncol=2, nrow=length(rownames(Matrix)), byrow = T)
   segment_chromosomes <- splitted_ids[,1]
   segment_coords <- splitted_ids[,2]
-  
+
   splitted_ids <- strsplit(segment_coords,  split="-", fixed = FALSE, perl = FALSE, useBytes = FALSE)
   segment_coords <- matrix(unlist(splitted_ids), ncol=2, nrow=length(segment_coords), byrow = T)
   segment_coords[,1]<-as.numeric(segment_coords[,1])
   segment_coords[,2]<-as.numeric(segment_coords[,2])
-  
+
   Sort_Matrix<-c()
-  
+
   for(chr_i in c(1:22,"X", "Y"))
   {
     print(paste("ordering chr: ",  chr_i))
@@ -402,6 +402,6 @@ SortMatrixChrsNumerically<-function(Matrix)
     sort_segments_chr_i<-segments_chr_i[sort(as.numeric(segment_coords[segments_chr_i,1]), index.return=TRUE)$ix]
     Sort_Matrix<-rbind(Sort_Matrix, Matrix[sort_segments_chr_i,])
   }
-  
-  return (Matrix)
+
+  return (Sort_Matrix)
 }
