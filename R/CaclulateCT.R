@@ -155,8 +155,8 @@ Calculate_CT_Cells<-function(CThripsosObject, window_length, min_cnv_changes, mi
   rownames(CT_CellsChrs)<-colnames(CThripsosObject$CNVMatrix)
   colnames(CT_CellsChrs)<-CThripsosObject$Annotations$chromosomes
 
-  rownames(CT_CellsBinsMaxCN)<-rownames(CThripsosObject$CNVMatrix)
-  colnames(CT_CellsBinsMaxCN)<-colnames(ThripsosObject$CNVMatrix)
+  rownames(CT_CellsBinsMaxCN)<-colnames(CThripsosObject$CNVMatrix)
+  colnames(CT_CellsBinsMaxCN)<-rownames(CThripsosObject$CNVMatrix)
 
   rownames(CT_CellsBins)<-colnames(CThripsosObject$CNVMatrix)
   colnames(CT_CellsBins)<-rownames(CThripsosObject$CNVMatrix)
