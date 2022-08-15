@@ -87,6 +87,7 @@ CT_scoring_single<-function(cell, window_length, min_cnv_changes, min_consec_cnv
 }
 
 
+
 Calculate_CT_Metacells<-function(CThripsosObject, window_length, min_cnv_changes, min_consec_cnvs)
 {
   CT_MetacellsChrs<-c()
