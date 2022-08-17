@@ -108,11 +108,11 @@ Calculate_CT_Metacells<-function(CThripsosObject, window_length, min_cnv_changes
   rownames(CT_MetacellsChrs)<-rownames(CThripsosObject$Metacells$MetacellsMatrix)
   colnames(CT_MetacellsChrs)<-CThripsosObject$Annotations$chromosomes
 
-  rownames(CT_MetacellsBins)<-colnames(CThripsosObject$Metacells$MetacellsMatrix)
-  colnames(CT_MetacellsBins)<-rownames(CThripsosObject$Metacells$MetacellsMatrix)
+  rownames(CT_MetacellsBins)<-rownames(CThripsosObject$Metacells$MetacellsMatrix)
+  colnames(CT_MetacellsBins)<-colnames(CThripsosObject$Metacells$MetacellsMatrix)
 
-  rownames(CT_MetacellsBinsMaxCN)<-colnames(CThripsosObject$Metacells$MetacellsMatrix)
-  colnames(CT_MetacellsBinsMaxCN)<-rownames(CThripsosObject$Metacells$MetacellsMatrix)
+  rownames(CT_MetacellsBinsMaxCN)<-rownames(CThripsosObject$Metacells$MetacellsMatrix)
+  colnames(CT_MetacellsBinsMaxCN)<-colnames(CThripsosObject$Metacells$MetacellsMatrix)
 
   CThripsosObject$Metacells=c(CThripsosObject$Metacells, CT_MetacellsChrs=1)
   CThripsosObject$Metacells$CT_MetacellsChrs<-CT_MetacellsChrs
