@@ -1,13 +1,3 @@
-# You can learn more about package authoring with RStudio at:
-#
-#   http://r-pkgs.had.co.nz/
-#
-# Some useful keyboard shortcuts for package authoring:
-#
-#   Install Package:           'Cmd + Shift + B'
-#   Check Package:             'Cmd + Shift + E'
-#   Test Package:              'Cmd + Shift + T'
-
 CT_scoring_single<-function(cell, window_length, min_cnv_changes, min_consec_cnvs, CThripsosObject)
 {
   chromatriptic_cell<-FALSE
@@ -405,4 +395,25 @@ SortMatrixChrsNumerically<-function(Matrix)
   }
 
   return (Sort_Matrix)
+}
+
+                     MetacellsTotalCNVs<-function(CThripsosObject)
+{
+  cnv_changes_metacells<-c()
+  for(metacell_i in 1:nrow(CThripsosObject$Metacells$MetacellsMatrix))
+  {
+    metacell<-CThripsosObject$Metacells$MetacellsMatrix[metacell_i,]
+    cnvs_chr<-c()
+    for(chr_i in c(1:22, "X", "Y"))
+    {
+      compressed_metacell<-rle(metacell[which(CThripsosObject$Annotations$segment_chromosomes==chr_i)])
+      # print(paste( "chr ", chr_i, ":", length(compressed_metacell$values)))
+      cnvs_chr<-c(cnvs_chr, length(compressed_metacell$values))
+    }
+    cnv_changes_metacells<-rbind(cnv_changes_metacells, cnvs_chr)
+  }
+  
+  colnames(cnv_changes_metacells)<-(paste0("chr_", c(1:22, "X", "Y")))
+  rownames(cnv_changes_metacells)<-paste0("metacell_", rownames(CThripsosObject$Metacells$MetacellsMatrix))
+  return(cnv_changes_metacells)
 }
