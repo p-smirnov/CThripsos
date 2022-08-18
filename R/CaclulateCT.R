@@ -397,7 +397,8 @@ SortMatrixChrsNumerically<-function(Matrix)
   return (Sort_Matrix)
 }
 
-                     MetacellsTotalCNVs<-function(CThripsosObject)
+#Counts total number of CNVs per Chr at each metacell
+MetacellsTotalCNVs<-function(CThripsosObject)
 {
   cnv_changes_metacells<-c()
   for(metacell_i in 1:nrow(CThripsosObject$Metacells$MetacellsMatrix))
