@@ -16,7 +16,9 @@ ggplot2
 `CThripsosObject<-CreateCThripsosObject(Segments_Matrix)`
 
 `window_length <-50000000`
+
 `min_cnv_changes=10`
+
 `min_consec_cnvs <- 1`
 
 `CThripsosObject<-Calculate_CT_Cells(CThripsosObject, window_length, min_cnv_changes, min_consec_cnvs)`
