@@ -23,5 +23,5 @@ ggplot2
 
 `CThripsosObject<-Calculate_CT_Cells(CThripsosObject, window_length, min_cnv_changes, min_consec_cnvs)`
 
-# Further analysis
-For more details check the wiki
+# You can find an example of how to use the package at:
+https://github.com/gonzaparra/CThripsos/tree/master/Examples
