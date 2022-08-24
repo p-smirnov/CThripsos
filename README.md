@@ -9,19 +9,19 @@ CThripsos is an easy to use R package that allows to analyse scDNA-seq data and 
 ggplot2
 
 # Minimum code
-`library(CThripsos)`
+```
+library(CThripsos)
 
-`Segments_Matrix <- read.table("file.txt", sep = "\t", stringsAsFactors = F, header = T, row.names = 1)`
+CNV_Matrix <- read.table("file.txt", sep = "\t", stringsAsFactors = F, header = T, row.names = 1)
 
-`CThripsosObject<-CreateCThripsosObject(Segments_Matrix)`
+CThripsosObject<-CreateCThripsosObject(CNV_Matrix)
 
-`window_length <-50000000`
+window_length <-50000000
+min_cnv_changes=10
+min_consec_cnvs <- 1
 
-`min_cnv_changes=10`
-
-`min_consec_cnvs <- 1`
-
-`CThripsosObject<-Calculate_CT_Cells(CThripsosObject, window_length, min_cnv_changes, min_consec_cnvs)`
+CThripsosObject<-Calculate_CT_Cells(CThripsosObject, window_length, min_cnv_changes, min_consec_cnvs)
+```
 
 # You can find an example of how to use the package at:
 https://github.com/gonzaparra/CThripsos/tree/master/Examples
