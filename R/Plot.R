@@ -1,5 +1,12 @@
 plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows=NULL, plotvar="CT", max_cnv=CThripsosObject$Metacells$min_cnv_changes)
 {
+  if( is.null(CThripsosObject$Metacells$CT_MetacellsBins))
+  {
+    print("No CT data was found. Did you run Calculate_CT_Metacells()?")
+  }
+  else{
+
+
   # max_cnv is the upper limit to the color scale
   library(ggplot2)
 
@@ -65,4 +72,6 @@ plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows=NULL, plotvar=
   AllClones <- gridExtra::grid.arrange(grobs = plots, nrow = rows)
 
   return(AllClones)
+  }
 }
+

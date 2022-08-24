@@ -30,7 +30,10 @@ CT_scoring_single<-function(cell, window_length, min_cnv_changes, min_consec_cnv
         # This is the segment where the changes need to be quantified.
         if(segment_i>window_limit)
         {
-          print(paste("shit ",segment_i, " ",window_limit))
+          # print(paste("shit ",segment_i, " ",window_limit))
+          print("Error while processing! Are your genomic bins sorted numerically and not alphabetically?")
+          print("Try to do: 'Segments_Matrix<- SortMatrixChrsNumerically(Segments_Matrix)' before creating the CThripsosObject")
+          break
         }
         CNV_changes <-cell[segment_i:window_limit]
 
@@ -76,8 +79,6 @@ CT_scoring_single<-function(cell, window_length, min_cnv_changes, min_consec_cnv
   return(list(chromatriptic_chromosomes=chromatriptic_chromosomes, bins_windows=bins_windows, bins_cnv_changes=bins_cnv_changes))
 }
 
-
-
 Calculate_CT_Metacells<-function(CThripsosObject, window_length, min_cnv_changes, min_consec_cnvs)
 {
   CT_MetacellsChrs<-c()
@@ -121,6 +122,8 @@ Calculate_CT_Metacells<-function(CThripsosObject, window_length, min_cnv_changes
 
   CThripsosObject$Metacells=c(CThripsosObject$Metacells, min_consec_cnvs=1)
   CThripsosObject$Metacells$min_consec_cnvs<-min_consec_cnvs
+
+  print("finished!")
 
   return(CThripsosObject)
 }
@@ -249,76 +252,6 @@ CreateMetacells<-function(CThripsosObject, clusters)
   return(CThripsosObject)
 }
 
-plot_MetacellsCT<-function (CThripsosObject, score_binary=T, rows=NULL, plotvar="CT", max_cnv=CThripsosObject$Metacells$min_cnv_changes)
-{
-  # max_cnv is the upper limit to the color scale
-  library(ggplot2)
-
-  if(is.null(rows))
-  {
-    rows<-nrow(CThripsosObject$Metacells$MetacellsMatrix)
-  }
-
-  MetaCell_All_df <- c()
-  plots <- list()
-  p_i = 1
-  for (ClonePlot in unique(CThripsosObject$Metacells$MetacellsClusters[,2]))
-  {
-    MetaCell_df <- as.data.frame(cbind(rep(ClonePlot, length(CThripsosObject$Annotations$segment_chromosomes)),
-                                       colnames(CThripsosObject$Metacells$MetacellsMatrix)))
-
-    colnames(MetaCell_df) <- c("Clone", "Chromosome")
-    MetaCell_df$chrXY <- unlist(lapply(strsplit(MetaCell_df$Chromosome,
-                                                ":"), "[[", 1))
-    MetaCell_df$start <- unlist(lapply((strsplit(unlist(lapply(strsplit(MetaCell_df$Chromosome, "-"), "[[", 1)), ":")), "[[", 2))
-    MetaCell_df$end <- unlist(lapply(strsplit(MetaCell_df$Chromosome, "-"), "[[", 2))
-    MetaCell_df$CNV <- CThripsosObject$Metacells$MetacellsMatrix[ClonePlot, ]
-    MetaCell_df$CT_bin <- CThripsosObject$Metacells$CT_MetacellsBins[ClonePlot,]
-    MetaCell_df$CT_bin_cnvmax <- CThripsosObject$Metacells$CT_MetacellsBinsMaxCN[ClonePlot,]
-    MetaCell_df$CT_bin_cnvmax[which(MetaCell_df$CT_bin_cnvmax >  max_cnv)] <- max_cnv
-    MetaCell_df$CT_bin_cnvmax[1] <- 0
-    MetaCell_df$CT_bin_cnvmax[2] <- min_cnv_changes
-
-    MetaCell_df$Coordinates <- 1:length(MetaCell_df$CNV)
-    MetaCell_df$CT_bin[1] <- 0
-    MetaCell_df$CT_bin[2] <- 0.1
-    MetaCell_df_filtered <- MetaCell_df
-    MetaCell_df_filtered$CT_bin[1] <- 0
-    MetaCell_df_filtered$CT_bin[2] <- 0.1
-    MetaCell_df_filtered$CNV <- as.numeric(MetaCell_df_filtered$CNV)
-    MetaCell_df_filtered$CNV[MetaCell_df_filtered$CNV >= min_cnv_changes] <- min_cnv_changes
-
-    if(score_binary==T)
-    {
-    MetaCell_df_filtered$CT_bin[MetaCell_df_filtered$CT_bin>0]<-1
-    }
-
-    if(plotvar=="CT")
-    {
-      PlotClone <- ggplot(MetaCell_df_filtered, aes(Coordinates, CNV)) + ggrastr::rasterise(geom_point(aes(colour = (CT_bin))), dpi=300) +
-        scale_colour_gradient2(low = "orange", high = "black", mid = "red", midpoint = (0.5)) +
-        ylim(0, 10) + theme_bw() +
-        theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-              axis.ticks.x = element_blank(), axis.text.x = element_blank(), panel.spacing.x = unit(0, "lines"), panel.border = element_rect(linetype = 3)) +
-        facet_grid(. ~ reorder(chrXY, Coordinates), scales = "free", space = "free") + ggExtra::removeGrid() + scale_x_continuous(expand = c(0.01, 0.01))
-    }else if(plotvar=="MaxCNV"){
-      PlotClone <- ggplot(MetaCell_df_filtered, aes(Coordinates, CNV)) + ggrastr::rasterise(geom_point(aes(colour = (CT_bin_cnvmax))), dpi=300) +
-        scale_colour_gradient2(low = "orange", high = "black", mid = "red", midpoint = (5)) +
-        ylim(0, 10) + theme_bw() +
-        theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-              axis.ticks.x = element_blank(), axis.text.x = element_blank(), panel.spacing.x = unit(0, "lines"), panel.border = element_rect(linetype = 3)) +
-        facet_grid(. ~ reorder(chrXY, Coordinates), scales = "free", space = "free") + ggExtra::removeGrid() + scale_x_continuous(expand = c(0.01, 0.01))
-    }
-
-    plots[[p_i]] <- PlotClone
-    p_i = p_i + 1
-  }
-  AllClones <- gridExtra::grid.arrange(grobs = plots, nrow = rows)
-  # plot(AllClones)
-  return(AllClones)
-}
-
-
 CT_Regions_Metacells<-function (CThripsosObject, Metacell)
 {
   normalised_ct <- c()
@@ -370,7 +303,7 @@ CT_Regions_Metacells<-function (CThripsosObject, Metacell)
 }
 
 
-#This function is to sort a matrix where bins are not numerically sorted within each chr 
+#This function is to sort a matrix where bins are not numerically sorted within each chr
 SortMatrixChrsNumerically<-function(Matrix)
 {
   # usage: Sort_Segments_Matrix<-SortMatrixChrsNumerically(Segments_Matrix)
@@ -413,7 +346,7 @@ MetacellsTotalCNVs<-function(CThripsosObject)
     }
     cnv_changes_metacells<-rbind(cnv_changes_metacells, cnvs_chr)
   }
-  
+
   colnames(cnv_changes_metacells)<-(paste0("chr_", c(1:22, "X", "Y")))
   rownames(cnv_changes_metacells)<-paste0("metacell_", rownames(CThripsosObject$Metacells$MetacellsMatrix))
   return(cnv_changes_metacells)

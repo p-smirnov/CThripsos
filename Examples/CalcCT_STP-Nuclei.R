@@ -11,9 +11,11 @@ clusters[,"cell_id"]<-paste0("X",clusters[,"cell_id"])
 Segments_Matrix<-Segments_Matrix[,clusters[,"cell_id"]]
 dim(Segments_Matrix)
 
+Segments_Matrix<- SortMatrixChrsNumerically(Segments_Matrix)
+
 # We create metadata objects and store the CNV matrix in a CThripsos object
 CThripsosObject<-CreateCThripsosObject(Segments_Matrix)
-rm(Segments_Matrix)
+# rm(Segments_Matrix)
 
 window_length <-50000000
 min_cnv_changes=10
@@ -21,13 +23,17 @@ min_consec_cnvs <- 1
 
 CThripsosObject<-Calculate_CT_Cells(CThripsosObject, window_length, min_cnv_changes, min_consec_cnvs)
 
-# We create metacells based on the clusters that were provided in the earlier step
-CThripsosObject<-CreateMetacells(CThripsosObject, clusters)
-
+CellsClusters<-cbind(colnames(Segments_Matrix), 1:length(colnames(Segments_Matrix)))
+colnames(CellsClusters)<-c("cell_id", "cluster")
 # We calculate CT for all metacells that were stored in the CThripsosObject
+
+# We create metacells based on the clusters that were provided in the earlier step
+CThripsosObject<-CreateMetacells(CThripsosObject, CellsClusters)
+
 CThripsosObject<-Calculate_CT_Metacells(CThripsosObject, window_length, min_cnv_changes, min_consec_cnvs)
 
 plot_MetacellsCT(CThripsosObject)
+
 
 
 
