@@ -14,7 +14,7 @@ CT_scoring_single<-function(cell, window_length, min_cnv_changes, min_consec_cnv
     segments_in_chromosome_i=which(CThripsosObject$Annotations$segment_chromosomes==chromosome_i)
 
     compressed_cell<-rle(cell[segments_in_chromosome_i])
-    if (length(compressed_cell$values)<10) {
+    if (length(compressed_cell$values)<min_cnv_changes) {
       # print("skipping chr...")
       chromatriptic_chromosomes=c(chromatriptic_chromosomes, chromatriptic_chromosome)
       next
