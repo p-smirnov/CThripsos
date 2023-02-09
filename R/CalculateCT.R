@@ -5,7 +5,7 @@ CT_scoring_single<-function(cell, window_length, min_cnv_changes, min_consec_cnv
 
   chromatriptic_chromosomes<-c()
   bins_windows<-rep(0, nrow(CThripsosObject$CNVMatrix))
-  bins_cnv_changes<-rep(0, nrow(CThripsosObject$CNVMatrix))
+  bins_cnv_changes<-rep(0L, nrow(CThripsosObject$CNVMatrix))
 
   for (chromosome_i in chromosomes)
   {
@@ -14,11 +14,27 @@ CT_scoring_single<-function(cell, window_length, min_cnv_changes, min_consec_cnv
     segments_in_chromosome_i=which(CThripsosObject$Annotations$segment_chromosomes==chromosome_i)
 
     compressed_cell<-rle(cell[segments_in_chromosome_i])
-    if (length(compressed_cell$values)<10) {
+    if (length(compressed_cell$values)<=min_cnv_changes) {
       # print("skipping chr...")
       chromatriptic_chromosomes=c(chromatriptic_chromosomes, chromatriptic_chromosome)
       next
     }
+
+    windows_to_remove <- which(compressed_cell$lengths<min_consec_cnvs)
+    if(length(windows_to_remove)==length(compressed_cell$lengths)){
+      stop(paste0("Error: Chromosome:", chromosome_i, "has no segments longer than min_consec_cnvs. Check that the parameter value is sane, and that CNVs segmentation has no artefacts. Also check that your bins are sorted numerically, and not alphabetically."))
+    }
+
+    for(windw in windows_to_remove){
+      if(windw==1){
+        ## Special case, we need to find the first valid segment in the chromosome and set it to that value, so the rest of the segments in front will be also correct.
+        compressed_cell$values[windw] = compressed_cell$values[which(compressed_cell$lengths>=min_consec_cnvs)[[1]]]
+      } else {
+        compressed_cell$values[windw] = compressed_cell$values[windw-1]
+      }
+    }
+
+    cell[segments_in_chromosome_i] <- inverse.rle(compressed_cell)
 
     for (segment_i in segments_in_chromosome_i)
     {
@@ -42,40 +58,34 @@ CT_scoring_single<-function(cell, window_length, min_cnv_changes, min_consec_cnv
         names(CNV_changes) <- NULL
 
         # We slide the window and count again until the end.
-        compressed_cnv <- rle(CNV_changes)
-        window_changes<- length(compressed_cnv$values)
-        cnv_states<-unique(compressed_cnv$values)
-
-        windows_to_delete<-which(compressed_cnv$lengths>=min_consec_cnvs)
-        compressed_cnv$values<-compressed_cnv$values[windows_to_delete]
-        compressed_cnv$lengths<-compressed_cnv$lengths[windows_to_delete]
-
-        compressed_cnv<-inverse.rle(compressed_cnv)
-        compressed_cnv<-rle(compressed_cnv)
+        compressed_cnv<- rle(CNV_changes)
         window_changes<- length(compressed_cnv$values)
         cnv_states<-unique(compressed_cnv$values)
 
         chr_windows <- chr_windows +1
-        if(window_changes>= min_cnv_changes)
+        if(window_changes> min_cnv_changes)# window changes is actually number of unique cnv states.
         {
+          # browser()
           chromatriptic_cell=TRUE
           chromatriptic_chromosome=chromatriptic_chromosome+1
+          # here, we record how many chromothriptic windows each bin has been a member of.
           bins_windows[segment_i:window_limit]<-bins_windows[segment_i:window_limit] +1
         }
         bins_windows[3:10][1:3]
-
-        bins_cnv_changes[segment_i:window_limit][which(bins_cnv_changes[segment_i:window_limit]<window_changes)]<-window_changes
+        ## Here we update the maximum number of CNV changes so far for each bin, to keep track of the "most chromothriptic" bins
+        bins_cnv_changes[segment_i:window_limit] <- pmax.int(bins_cnv_changes[segment_i:window_limit],as.integer(window_changes))
       }
     }
     if(chromatriptic_chromosome >0)
     {
+      # print(paste0("Chromosome: ", chromosome_i, " Number of CT windows: ", chromatriptic_chromosome, " Total number of windows: ", chr_windows))
       chromatriptic_chromosome <- chromatriptic_chromosome/chr_windows
       bins_windows[segments_in_chromosome_i]<-bins_windows[segments_in_chromosome_i]/chr_windows
     }
     chromatriptic_chromosomes=c(chromatriptic_chromosomes, chromatriptic_chromosome)
   }
 
-  print(chromatriptic_chromosomes)
+  # print(chromatriptic_chromosomes)
   return(list(chromatriptic_chromosomes=chromatriptic_chromosomes, bins_windows=bins_windows, bins_cnv_changes=bins_cnv_changes))
 }
 
@@ -89,7 +99,7 @@ Calculate_CT_Metacells<-function(CThripsosObject, window_length, min_cnv_changes
   {
     print(paste("processing metacell", i, "..."))
     cell<-CThripsosObject$Metacells$MetacellsMatrix[i,]
-    chromatriptic_chromosomes<-CT_scoring_single(cell, window_length, min_cnv_changes, min_consec_cnvs, CThripsosObject)
+    chromatriptic_chromosomes<-fasterCTScore(cell, window_length, min_cnv_changes, min_consec_cnvs, CThripsosObject)
     CT_MetacellsChrs<-rbind(CT_MetacellsChrs, chromatriptic_chromosomes$chromatriptic_chromosomes)
     CT_MetacellsBins<-rbind(CT_MetacellsBins, chromatriptic_chromosomes$bins_windows)
     CT_MetacellsBinsMaxCN<-rbind(CT_MetacellsBinsMaxCN, chromatriptic_chromosomes$bins_cnv_changes)
@@ -139,7 +149,7 @@ Calculate_CT_Cells<-function(CThripsosObject, window_length, min_cnv_changes, mi
   {
     print(paste("processing cell", i, "..."))
     cell<-CThripsosObject$CNVMatrix[,i]
-    chromatriptic_chromosomes<-CT_scoring_single(cell, window_length, min_cnv_changes, min_consec_cnvs, CThripsosObject)
+    chromatriptic_chromosomes<-fasterCTScore(cell, window_length, min_cnv_changes, min_consec_cnvs, CThripsosObject)
     CT_CellsChrs<-rbind(CT_CellsChrs, chromatriptic_chromosomes$chromatriptic_chromosomes)
     CT_CellsBins<-rbind(CT_CellsBins, chromatriptic_chromosomes$bins_windows)
     CT_CellsBinsMaxCN<-rbind(CT_CellsBinsMaxCN, chromatriptic_chromosomes$bins_cnv_changes)
