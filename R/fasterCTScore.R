@@ -1,4 +1,4 @@
-dyn.load("~/fastPosition.so")
+# dyn.load("~/fastPosition.so")
 
 .firstCross <- function(Data, threshold=0, relationship, start=1) {
 #Copyright https://github.com/joshuaulrich, under GPLv3
@@ -38,28 +38,37 @@ fasterCTScore <- function(cell, window_length, min_cnv_changes, min_consec_cnvs,
   bins_windows<-rep(0, nrow(CThripsosObject$CNVMatrix))
   bins_cnv_changes<-rep(0L, nrow(CThripsosObject$CNVMatrix))
 
-  window_bin_length <- window_length/bin_size
 
-  if(floor(window_bin_length)!=window_bin_length){
-    ## TODO: figure out why Gonzalo's implementation is off by one for window length?
-    warning("Window is not a multiple of bin size in length. Rounding the window down to the nearest integral bin size.")
-    window_bin_length <- floor(window_bin_length)
-  }
-
-  window_vector <- rep(1, window_bin_length)
   # chromosome_i <- 2
   for (chromosome_i in chromosomes) {
-
+    # if(chromosome_i == 21){
+    #   browser()
+    # }
     chromatriptic_chromosome <-0
     chr_windows<-0
     segments_in_chromosome_i=which(CThripsosObject$Annotations$segment_chromosomes==chromosome_i)
 
-    # Window size could be bigger than a chromosome, if so, then skip.
-    if(last(segment_coords[segments_in_chromosome_i,2])-first(segment_coords[segments_in_chromosome_i,1])<=window_length){
-      # warning(paste0("Window size is larger than chromosome: ", chromosome_i))
-      chromatriptic_chromosomes=c(chromatriptic_chromosomes, chromatriptic_chromosome)
-      next
+    # Window size could be bigger than a chromosome, so we set window size to teh chromosome size.
+    if(dplyr::last(segment_coords[segments_in_chromosome_i,2])-dplyr::first(segment_coords[segments_in_chromosome_i,1])<=window_length){
+      warning(paste0("Window size is larger than chromosome: ", chromosome_i, "\n"))
+      window_length_cur <- dplyr::last(segment_coords[segments_in_chromosome_i,2])-dplyr::first(segment_coords[segments_in_chromosome_i,1])
+      # chromatriptic_chromosomes=c(chromatriptic_chromosomes, chromatriptic_chromosome)
+      # next
+    } else {
+      window_length_cur <- window_length
     }
+
+    window_bin_length <- window_length_cur/bin_size
+
+    if(floor(window_bin_length)!=window_bin_length){
+      ## TODO: figure out why Gonzalo's implementation is off by one for window length?
+      warning("Window is not a multiple of bin size in length. Rounding the window down to the nearest integral bin size.")
+      window_bin_length <- floor(window_bin_length)
+    }
+
+    window_vector <- rep(1, window_bin_length)
+
+
 
     compressed_cell<-rle(cell[segments_in_chromosome_i])
 
@@ -103,7 +112,7 @@ fasterCTScore <- function(cell, window_length, min_cnv_changes, min_consec_cnvs,
     while(i <= (length(breakpoint_locs_left) - min_cnv_changes + 1)){
       # print(paste0("i at beginning of loop: ",i))
       ## If the next condition is true, we have a chromothripsis event.
-      if(diff(breakpoint_locs_left[c(i,i+min_cnv_changes-1)])<=window_length){
+      if(diff(breakpoint_locs_left[c(i,i+min_cnv_changes-1)])<=window_length_cur){ # include the right edge of last breakpoint into comparison with the length of my window
 
         ## Now, we need to find the first window in which this chromothripsis event occurs. We do this "generously", that is, we require any section of the bin
         ## to intersect the window to include it in the event. This can trivially be made conservative by instead requiring the full bins to be inside the
@@ -115,7 +124,7 @@ fasterCTScore <- function(cell, window_length, min_cnv_changes, min_consec_cnvs,
         ## sequence generation in R can be frustrating, so this is a while loop.
         j <- i + 1
         while(j <= length(breakpoint_locs_left) - min_cnv_changes + 1){
-          if(diff(breakpoint_locs_left[c(j,j+min_cnv_changes-1)])<=window_length){
+          if(diff(breakpoint_locs_left[c(j,j+min_cnv_changes-1)])<=window_length_cur){
             active_breakpoints <- c(active_breakpoints, breakpoints[j+min_cnv_changes-1])
           }
           j <- j + 1
@@ -124,11 +133,11 @@ fasterCTScore <- function(cell, window_length, min_cnv_changes, min_consec_cnvs,
 
         active_breakpoints_locleft <- breakpoint_locs_left[active_breakpoints]
 
-        distance_between_ends <- last(active_breakpoints_locleft) - first(active_breakpoints_locleft)
-        bins_between_ends <- breakpoint_idx[last(active_breakpoints)] - breakpoint_idx[first(active_breakpoints)] - 1
+        distance_between_ends <- last(active_breakpoints_locleft) - dplyr::first(active_breakpoints_locleft)
+        bins_between_ends <- breakpoint_idx[last(active_breakpoints)] - breakpoint_idx[dplyr::first(active_breakpoints)] - 1
 
-        leftmost_location_with_ct <- max(active_breakpoints_locleft[min_cnv_changes] - window_length + 1, 1)  ## We want to fully incorporate the breakpoint here
-        rightmost_location_with_ct <- min(active_breakpoints_locleft[length(active_breakpoints_locleft) - min_cnv_changes + 1] + window_length - 1, as.numeric(tail(segment_coords_chromosome[,2],1))-1)   ## We want to fully incorporate the breakpoint here
+        leftmost_location_with_ct <- max(active_breakpoints_locleft[min_cnv_changes] - window_length_cur + 1, 1)
+        rightmost_location_with_ct <- min(active_breakpoints_locleft[length(active_breakpoints_locleft) - min_cnv_changes + 1] + window_length_cur - 1, as.numeric(tail(segment_coords_chromosome[,1],1)))
 
         leftmost_bin_with_ct <- Position(function(y) y >= leftmost_location_with_ct, as.numeric(segment_coords_chromosome[,2])) # this is the "anti-conservative" decision
         rightmost_bin_with_ct <- Position(function(y) y <= rightmost_location_with_ct, as.numeric(segment_coords_chromosome[,1]), right = TRUE)
@@ -158,8 +167,8 @@ fasterCTScore <- function(cell, window_length, min_cnv_changes, min_consec_cnvs,
         ## TODO: This convolution is now the slowest part. I think I can simplify this even further, as a general convolution is not actually necessary here, I know these filters will always be all 1s,
         ## I should be able to compute the result from the length of the filters. However, I think this is efficient enough for now.
 
-        conv_res = convolve(rep(1,rightmost_bin_with_ct - window_bin_length - leftmost_bin_with_ct + 1), c(window_vector,1), type = "o")
-        chromatriptic_chromosome <- chromatriptic_chromosome + length(conv_res) - window_bin_length
+        conv_res = convolve(rep(1,rightmost_bin_with_ct - window_bin_length - leftmost_bin_with_ct + 2), window_vector, type = "o") ## + 2 because we want to include the end bins, as well as only a single fitting CT window is still ok.
+        chromatriptic_chromosome <- chromatriptic_chromosome + length(conv_res) - window_bin_length + 1
         bins_windows[segments_in_chromosome_i][seq(leftmost_bin_with_ct, rightmost_bin_with_ct)] <- bins_windows[segments_in_chromosome_i][seq(leftmost_bin_with_ct, rightmost_bin_with_ct)] + conv_res
         ## Skip to the end of the currently active breakpoints
         i <-  last(active_breakpoints)
@@ -170,20 +179,20 @@ fasterCTScore <- function(cell, window_length, min_cnv_changes, min_consec_cnvs,
 
     ## bin cnv changes is done on all breakpoints:
     ## TODO:: this does not currently agree with the reference implementation, but I am not convinced the reference is doing the right thing, because I think this does what I expect.
-    ii <- first(breakpoints)
+    ii <- dplyr::first(breakpoints)
 
     while(ii <= last(breakpoints)){
       # jj <- ii + min_cnv_changes
 
       ## Finding the rightmost bin that breakpoint ii has influence on.
-      rightmost_location_with_ct_current <- min(breakpoint_locs_left[ii] + window_length - 1, as.numeric(tail(segment_coords_chromosome[,2],1))-1)   ## We want to fully incorporate the breakpoint here
+      rightmost_location_with_ct_current <- min(breakpoint_locs_left[ii] + window_length_cur - 1, as.numeric(tail(segment_coords_chromosome[,2],1))-1)   ## We want to fully incorporate the breakpoint here
       rightmost_bin_with_ct_current <- .firstCross(segment_coords_chromosome[,2], threshold = rightmost_location_with_ct_current, relationship = "gt")
 
       jj <- ii+1
       while(jj <= last(breakpoints)){
         ## are ii and jj close enough together?
-        if(diff(breakpoint_locs_left[c(ii,jj)]) <= window_length){
-          leftmost_location_with_ct_current <- max(breakpoint_locs_left[jj] - window_length + 1, 1)  ## We want to fully incorporate the breakpoint here
+        if(diff(breakpoint_locs_left[c(ii,jj)]) <= window_length_cur){
+          leftmost_location_with_ct_current <- max(breakpoint_locs_left[jj] - window_length_cur + 1, 1)  ## We want to fully incorporate the breakpoint here
           leftmost_bin_with_ct_current <- .firstCross(segment_coords_chromosome[,2], threshold = leftmost_location_with_ct_current, relationship = "gteq")
 
           bins_cnv_changes[segments_in_chromosome_i][leftmost_bin_with_ct_current:rightmost_bin_with_ct_current] <- pmax(jj - ii + 1,bins_cnv_changes[segments_in_chromosome_i][leftmost_bin_with_ct_current:rightmost_bin_with_ct_current])
@@ -195,7 +204,7 @@ fasterCTScore <- function(cell, window_length, min_cnv_changes, min_consec_cnvs,
 
 
     # chr_windows <- last_segment_in_valid_window <- Position(function(x) tail(as.numeric(segment_coords_chromosome[,2]),1) - window_length > x, as.numeric(segment_coords_chromosome[,1]), right=TRUE)
-    chr_windows <- length(segments_in_chromosome_i) - window_bin_length
+    chr_windows <- length(segments_in_chromosome_i) - window_bin_length + 1
     if(chromatriptic_chromosome >0) {
       # print(paste0("Chromosome: ", chromosome_i, " Number of CT windows: ", chromatriptic_chromosome, " Total number of windows: ", chr_windows))
       chromatriptic_chromosome <- chromatriptic_chromosome/chr_windows
